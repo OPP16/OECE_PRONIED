@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Procesos PRONIED</title>
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+
+    <style>
+        body {
+            font-family: Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif, sans-serif;
+            margin: 10px;
+            background: #fafafa;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            font-size: 10px;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #0077b6;
+            color: white;
+        }
+
+        h1 {
+            color: #023e8a;
+        }
+
+        button {
+            background: #0077b6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        button:hover {
+            background: #0096c7;
+        }
+
+        input{
+            padding: 6px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Procesos PRONIED</h1>
+    <button id="btnDescargarExcel">⬇️ Descargar Excel</button>
+
+    <table id="tablaProcesos" class="display">
+        <thead>
+            <tr>
+                <th>N°</th>
+                <th>Entidad</th>
+                <th>Fecha Publicación</th>
+                <th>Nomenclatura</th>
+                <th>Objeto Contratación</th>
+                <th>Descripción Objeto</th>
+                <th>Moneda</th>
+                <th>Versión SEACE</th>
+                <th>Cronograma</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+
+    <script>
+        async function cargarDatos() {
+            const response = await fetch("procesos_pronied_con_cronograma.json");
+            const data = await response.json();
+
+            const tbody = document.querySelector("#tablaProcesos tbody");
+            data.forEach(item => {
+                const cronograma = item.Cronograma.map(c =>
+                    `<li><b>${c.Etapa}</b> → ${c["Fecha Inicio"]} - ${c["Fecha Fin"]}</li>`
+                ).join("");
+
+                const fila = document.createElement("tr");
+                fila.innerHTML = `
+          <td>${item["N°"]}</td>
+          <td>${item.Entidad}</td>
+          <td>${item["Fecha Publicación"]}</td>
+          <td>${item.Nomenclatura}</td>
+          <td>${item["Objeto Contratación"]}</td>
+          <td>${item["Descripción Objeto"]}</td>
+          <td>${item.Moneda}</td>
+          <td>${item["Versión SEACE"]}</td>
+          <td>${cronograma}</td>
+        `;
+                tbody.appendChild(fila);
+            });
+
+            $('#tablaProcesos').DataTable({
+                pageLength: 10,
+                language: {
+                    url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+                }
+            });
+
+            document.getElementById("btnDescargarExcel").addEventListener("click", () => {
+                descargarExcel(data);
+            });
+        }
+
+        function descargarExcel(datos) {
+            const wb = XLSX.utils.book_new();
+
+            const etapasSet = new Set();
+            datos.forEach(p => p.Cronograma.forEach(c => etapasSet.add(c.Etapa.trim())));
+            const etapas = Array.from(etapasSet);
+
+            const planilla = datos.map(p => {
+                const fila = {
+                    N: p["N°"],
+                    Entidad: p.Entidad,
+                    Fecha_Publicación: p["Fecha Publicación"],
+                    Nomenclatura: p.Nomenclatura,
+                    Objeto: p["Objeto Contratación"],
+                    Descripción: p["Descripción Objeto"],
+                    Moneda: p.Moneda,
+                    Versión_SEACE: p["Versión SEACE"]
+                };
+
+                etapas.forEach(et => {
+                    const etapa = p.Cronograma.find(c => c.Etapa.trim() === et);
+                    fila[`${et}_FInicio`] = etapa ? etapa["Fecha Inicio"] : "";
+                    fila[`${et}_FFin`] = etapa ? etapa["Fecha Fin"] : "";
+                });
+
+                return fila;
+            });
+
+            const ws = XLSX.utils.json_to_sheet(planilla);
+            XLSX.utils.book_append_sheet(wb, ws, "Procesos PRONIED");
+
+            const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+            saveAs(new Blob([wbout], { type: "application/octet-stream" }), "procesos_pronied.xlsx");
+        }
+
+        cargarDatos();
+    </script>
+</body>
+
+</html>
