@@ -13,107 +13,159 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"></script>
 
-    <style>
-        body {
-            font-family: Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif, sans-serif;
-            margin: 10px;
-            background: #fafafa;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th,
-        td {
-            padding: 6px 10px;
-            border: 1px solid #ddd;
-            font-size: 10px;
-            vertical-align: top;
-        }
-
-        th {
-            background-color: #0077b6;
-            color: white;
-        }
-
-        h1 {
-            color: #023e8a;
-        }
-
-        button {
-            background: #0077b6;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-bottom: 15px;
-        }
-
-        button:hover {
-            background: #0096c7;
-        }
-
-        input{
-            padding: 6px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <h1>Procesos PRONIED</h1>
-    <button id="btnDescargarExcel">⬇️ Descargar Excel</button>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-dark align-items-center" href="#">
+                <img src="assets/img1.png" alt="Logo" class="logo">
+            </a>
 
-    <table id="tablaProcesos" class="display">
-        <thead>
-            <tr>
-                <th>N°</th>
-                <th>Entidad</th>
-                <th>Fecha Publicación</th>
-                <th>Nomenclatura</th>
-                <th>Objeto Contratación</th>
-                <th>Descripción Objeto</th>
-                <th>Moneda</th>
-                <th>Versión SEACE</th>
-                <th>Cronograma</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-house-door-fill"></i>
+                            Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-info-circle-fill"></i> Acerca
+                            de</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <br />
+    <div class="container-fluid">
+        <h1 class="text-center"><strong>PROCESOS PRONIED</strong></h1>
+        <br />
 
+        <div class="row">
+            <div class="col">
+                <!-- 🔹 CARDS DE OBJETO CONTRATACIÓN -->
+                <h5 class="">Por Objeto de Contratación</h5>
+                <div class="row" id="cardsContainerObjetos"></div>
+            </div>
+            <div class="col">
+                <!-- 🔹 CARDS DE NOMENCLATURA -->
+                <h5 class="">Por Tipo de Nomenclatura</h5>
+                <div class="row" id="cardsContainerNomenclatura"></div>
+            </div>
+        </div>
+        <hr>
+                
+
+        <button id="btnDescargarExcel" class="">⬇️ Descargar Excel</button>
+
+        <table id="tablaProcesos" class="display">
+            <thead>
+                <tr>
+                    <th>N°</th>
+                    <th>Fecha Publicación</th>
+                    <th>Nomenclatura</th>
+                    <th>Objeto Contratación</th>
+                    <th>Descripción Objeto</th>
+                    <th>VR / VE / Cuantía de la contratación</th>
+                    <th>Moneda</th>
+                    <th>Cronograma</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
     <script>
         async function cargarDatos() {
             const response = await fetch("procesos_pronied_con_cronograma.json");
             const data = await response.json();
 
+            // === 📊 TOTALES POR OBJETO DE CONTRATACIÓN ===
+            const totalesObjeto = {};
+            data.forEach(p => {
+                const tipo = p["Objeto Contratación"].trim() || "Sin clasificar";
+                totalesObjeto[tipo] = (totalesObjeto[tipo] || 0) + 1;
+            });
+
+            const colores1 = ["bg-success"];
+            const colores2 = ["bg-info"];
+            const cardsContainerObjetos = document.getElementById("cardsContainerObjetos");
+            cardsContainerObjetos.innerHTML = "";
+
+            Object.entries(totalesObjeto).forEach(([tipo, cantidad], i) => {
+                const color = colores1[i % colores1.length];
+                const cardHTML = `
+                  <div class="col-lg-2 col-md-3 col-sm-4 col-5 mb-1">
+                    <div class="card text-white ${color} stat-card">
+                      <div class="m-1 text-center">
+                        <div class="stat-label">${tipo}</div>
+                        <div class="stat-value">${cantidad}</div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+                cardsContainerObjetos.insertAdjacentHTML("beforeend", cardHTML);
+            });
+
+            // === 📊 TOTALES POR PREFIJO DE NOMENCLATURA ===
+            const totalesNomen = {};
+            data.forEach(p => {
+                const nom = p.Nomenclatura?.trim() || "";
+                const prefijo = nom.split("-")[0]?.trim().toUpperCase() || "SIN PREFIJO";
+                totalesNomen[prefijo] = (totalesNomen[prefijo] || 0) + 1;
+            });
+
+            const cardsContainerNomenclatura = document.getElementById("cardsContainerNomenclatura");
+            cardsContainerNomenclatura.innerHTML = "";
+
+            Object.entries(totalesNomen).forEach(([prefijo, cantidad], i) => {
+                const color = colores2[i % colores2.length];
+                const cardHTML = `
+                  <div class="col-lg-2 col-md-3 col-sm-4 col-5 mb-1">
+                    <div class="card text-white ${color} stat-card">
+                      <div class="m-1 text-center">
+                        <div class="stat-label">${prefijo}</div>
+                        <div class="stat-value">${cantidad}</div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+                cardsContainerNomenclatura.insertAdjacentHTML("beforeend", cardHTML);
+            });
+
+            // === 📋 LLENAR TABLA ===
             const tbody = document.querySelector("#tablaProcesos tbody");
             data.forEach(item => {
-                const cronograma = item.Cronograma.map(c =>
-                    `<li><b>${c.Etapa}</b> → ${c["Fecha Inicio"]} - ${c["Fecha Fin"]}</li>`
-                ).join("");
+                const cronograma = "<ul style='margin:0; padding-left:16px;'>" +
+                    item.Cronograma.map(c =>
+                        `<li><b>${c.Etapa}</b>: ${c["Fecha Inicio"]} → ${c["Fecha Fin"]}</li>`
+                    ).join("") +
+                    "</ul>";
 
                 const fila = document.createElement("tr");
                 fila.innerHTML = `
-          <td>${item["N°"]}</td>
-          <td>${item.Entidad}</td>
-          <td>${item["Fecha Publicación"]}</td>
-          <td>${item.Nomenclatura}</td>
-          <td>${item["Objeto Contratación"]}</td>
-          <td>${item["Descripción Objeto"]}</td>
-          <td>${item.Moneda}</td>
-          <td>${item["Versión SEACE"]}</td>
-          <td>${cronograma}</td>
-        `;
+                  <td>${item["N°"]}</td>
+                  <td>${item["Fecha Publicación"]}</td>
+                  <td>${item.Nomenclatura}</td>
+                  <td>${item["Objeto Contratación"]}</td>
+                  <td>${item["Descripción Objeto"]}</td>
+                  <td>${item["VR/VE"]}</td>
+                  <td>${item.Moneda}</td>
+                  <td>${cronograma}</td>
+                `;
                 tbody.appendChild(fila);
             });
 
+            // === 📑 DATATABLE ===
             $('#tablaProcesos').DataTable({
                 pageLength: 10,
                 language: {
@@ -121,11 +173,13 @@
                 }
             });
 
+            // === 📥 EXPORTAR EXCEL ===
             document.getElementById("btnDescargarExcel").addEventListener("click", () => {
                 descargarExcel(data);
             });
         }
 
+        // === 📤 FUNCIÓN EXPORTAR EXCEL ===
         function descargarExcel(datos) {
             const wb = XLSX.utils.book_new();
 
@@ -162,6 +216,8 @@
         }
 
         cargarDatos();
+
+        
     </script>
 </body>
 
